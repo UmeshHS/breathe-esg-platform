@@ -15,96 +15,102 @@ class UploadCSVView(APIView):
 
     def post(self, request):
 
-        source_type = request.data.get("source_type")
-        file = request.FILES.get("file")
+        try:
+            source_type = request.data.get("source_type")
+            file = request.FILES.get("file")
 
-        if not file:
-            return Response(
-                {"error": "No file uploaded"},
-                status=status.HTTP_400_BAD_REQUEST
+            if not file:
+                return Response(
+                    {"error": "No file uploaded"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            organization, created = Organization.objects.get_or_create(
+                name="Demo Organization",
+                defaults={
+                    "industry": "Technology"
+                }
             )
 
-        # Create demo organization automatically if none exists
-        organization, created = Organization.objects.get_or_create(
-            name="Demo Organization",
-            defaults={
-                "industry": "Technology"
-            }
-        )
+            datasource = DataSource.objects.create(
+                organization=organization,
+                source_type=source_type,
+                uploaded_file=file
+            )
 
-        datasource = DataSource.objects.create(
-            organization=organization,
-            source_type=source_type,
-            uploaded_file=file
-        )
+            file.seek(0)
+            df = pd.read_csv(file)
 
-        file.seek(0)
-        df = pd.read_csv(file)
+            records_created = 0
 
-        records_created = 0
+            for _, row in df.iterrows():
 
-        for _, row in df.iterrows():
+                if source_type == "sap":
 
-            if source_type == "sap":
+                    value = float(row["quantity"])
 
-                value = float(row["quantity"])
-
-                EmissionRecord.objects.create(
-                    organization=organization,
-                    source=datasource,
-                    category=row["fuel_type"],
-                    scope="Scope 1",
-                    activity_value=value,
-                    original_unit=row["unit"],
-                    normalized_value=value,
-                    normalized_unit="L",
-                    suspicious=detect_suspicious(
-                        source_type,
-                        value
+                    EmissionRecord.objects.create(
+                        organization=organization,
+                        source=datasource,
+                        category=row["fuel_type"],
+                        scope="Scope 1",
+                        activity_value=value,
+                        original_unit=row["unit"],
+                        normalized_value=value,
+                        normalized_unit="L",
+                        suspicious=detect_suspicious(
+                            source_type,
+                            value
+                        )
                     )
-                )
 
-            elif source_type == "utility":
+                elif source_type == "utility":
 
-                value = float(row["kwh"])
+                    value = float(row["kwh"])
 
-                EmissionRecord.objects.create(
-                    organization=organization,
-                    source=datasource,
-                    category="Electricity",
-                    scope="Scope 2",
-                    activity_value=value,
-                    original_unit="kWh",
-                    normalized_value=value,
-                    normalized_unit="kWh",
-                    suspicious=detect_suspicious(
-                        source_type,
-                        value
+                    EmissionRecord.objects.create(
+                        organization=organization,
+                        source=datasource,
+                        category="Electricity",
+                        scope="Scope 2",
+                        activity_value=value,
+                        original_unit="kWh",
+                        normalized_value=value,
+                        normalized_unit="kWh",
+                        suspicious=detect_suspicious(
+                            source_type,
+                            value
+                        )
                     )
-                )
 
-            elif source_type == "travel":
+                elif source_type == "travel":
 
-                value = float(row["distance_km"])
+                    value = float(row["distance_km"])
 
-                EmissionRecord.objects.create(
-                    organization=organization,
-                    source=datasource,
-                    category=row["travel_type"],
-                    scope="Scope 3",
-                    activity_value=value,
-                    original_unit="km",
-                    normalized_value=value,
-                    normalized_unit="km",
-                    suspicious=detect_suspicious(
-                        source_type,
-                        value
+                    EmissionRecord.objects.create(
+                        organization=organization,
+                        source=datasource,
+                        category=row["travel_type"],
+                        scope="Scope 3",
+                        activity_value=value,
+                        original_unit="km",
+                        normalized_value=value,
+                        normalized_unit="km",
+                        suspicious=detect_suspicious(
+                            source_type,
+                            value
+                        )
                     )
-                )
 
-            records_created += 1
+                records_created += 1
 
-        return Response({
-            "message": "Upload successful",
-            "records_created": records_created
-        })
+            return Response({
+                "message": "Upload successful",
+                "records_created": records_created
+            })
+
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
