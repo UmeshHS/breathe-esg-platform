@@ -16,7 +16,7 @@ function UploadForm({ onUploadSuccess }) {
 
     try {
       const response = await axios.post(
-        "http://127.0.0.1:8000/api/ingestion/upload/",
+        `${import.meta.env.VITE_API_URL}/api/ingestion/upload/`,
         formData
       );
 

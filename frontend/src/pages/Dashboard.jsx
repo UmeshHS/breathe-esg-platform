@@ -25,7 +25,7 @@ function Dashboard() {
   const fetchRecords = async () => {
     try {
       const response = await axios.get(
-        "http://127.0.0.1:8000/api/emissions/records/"
+        `${import.meta.env.VITE_API_URL}/api/emissions/records/`
       );
 
       setRecords(response.data);
