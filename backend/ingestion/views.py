@@ -2,6 +2,7 @@ import pandas as pd
 
 from emissions.models import EmissionRecord
 from .services import detect_suspicious
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -9,14 +10,12 @@ from rest_framework import status
 from .models import DataSource
 from tenants.models import Organization
 
-import pandas as pd
 
 class UploadCSVView(APIView):
 
     def post(self, request):
 
         source_type = request.data.get("source_type")
-        organization_id = request.data.get("organization_id")
         file = request.FILES.get("file")
 
         if not file:
@@ -25,8 +24,12 @@ class UploadCSVView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        organization = Organization.objects.get(
-            id=organization_id
+        # Create demo organization automatically if none exists
+        organization, created = Organization.objects.get_or_create(
+            name="Demo Organization",
+            defaults={
+                "industry": "Technology"
+            }
         )
 
         datasource = DataSource.objects.create(
@@ -34,6 +37,7 @@ class UploadCSVView(APIView):
             source_type=source_type,
             uploaded_file=file
         )
+
         file.seek(0)
         df = pd.read_csv(file)
 

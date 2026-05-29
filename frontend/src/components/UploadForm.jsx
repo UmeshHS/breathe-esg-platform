@@ -8,16 +8,29 @@ function UploadForm({ onUploadSuccess }) {
   const handleUpload = async (e) => {
     e.preventDefault();
 
+    if (!file) {
+      alert("Please select a CSV file");
+      return;
+    }
+
     const formData = new FormData();
 
     formData.append("source_type", sourceType);
-    formData.append("organization_id", 1);
+    formData.append("organization_id", "1");
     formData.append("file", file);
+
+    console.log("Selected file:", file);
+    console.log("FormData file:", formData.get("file"));
 
     try {
       const response = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/ingestion/upload/`,
-        formData
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
       );
 
       alert(response.data.message);
@@ -25,10 +38,19 @@ function UploadForm({ onUploadSuccess }) {
       if (onUploadSuccess) {
         onUploadSuccess();
       }
-
     } catch (error) {
-      console.error(error);
-      alert("Upload failed");
+      console.error("Upload Error:", error);
+
+      if (error.response) {
+        console.log("Response Data:", error.response.data);
+        alert(
+          error.response.data.error ||
+          error.response.data.detail ||
+          "Upload failed"
+        );
+      } else {
+        alert("Upload failed");
+      }
     }
   };
 
@@ -43,9 +65,7 @@ function UploadForm({ onUploadSuccess }) {
 
       <select
         value={sourceType}
-        onChange={(e) =>
-          setSourceType(e.target.value)
-        }
+        onChange={(e) => setSourceType(e.target.value)}
         className="border p-2 mr-4"
       >
         <option value="sap">SAP</option>
@@ -56,9 +76,7 @@ function UploadForm({ onUploadSuccess }) {
       <input
         type="file"
         accept=".csv"
-        onChange={(e) =>
-          setFile(e.target.files[0])
-        }
+        onChange={(e) => setFile(e.target.files[0])}
       />
 
       <button
